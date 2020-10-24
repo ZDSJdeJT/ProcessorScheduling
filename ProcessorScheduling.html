@@ -1,0 +1,609 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>处理器调度</title>
+
+    <script>
+        var processes = [];
+        var changeIndex = -1;
+
+        function check(pName, priority, arrivalTime, serviceTime) {
+            //校验进程名
+            if (!/^\w+$/.test(pName)) {
+                alert("进程名只能由字母、数字或下划线组成，请重新输入！")
+                return false;
+            }
+            if (pName.length > 5) {
+                alert("进程名最多由5个字符组成，请重新输入！")
+                return false;
+            }
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i][0] == pName) {
+                    alert("该进程名已存在，请重新输入！")
+                    return false;
+                }
+            }
+            //校验优先级
+            if (!(/(^[0-9]\d*$)/.test(priority))) {
+                alert("优先级须为0-9之间的整数，请重新输入！");
+                return false;
+            }
+            if (priority > 9 || priority < 0) {
+                alert("优先级须为0-9之间的整数，请重新输入！");
+                return false;
+            }
+            //校验到达时间，不能存在到达时间相同的进程且需为正整数或0
+            if (!(/(^[0-9]\d*$)/.test(arrivalTime))) {
+                alert("到达时间须为正整数或0，请重新输入！");
+                return false;
+            }
+            if (arrivalTime > 10000) {
+                alert("到达时间最大值为10000，请重新输入！");
+                return false;
+            }
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i][2] == arrivalTime) {
+                    alert("该到达时间已存在进程，请重新输入！");
+                    return false;
+                }
+            }
+            //校验服务时间，需为正整数
+            if (!(/(^[1-9]\d*$)/.test(serviceTime))) {
+                alert("服务时间须为正整数，请重新输入！");
+                return false;
+            }
+            if (serviceTime > 10000) {
+                alert("服务时间最大值为10000，请重新输入！")
+                return false;
+            }
+            return true;
+        }
+
+        function createProcess() {
+            if (processes.length > 50) {
+                alert("进程数量达到上限！")
+                return false;
+            }
+            var pName = document.getElementById('pName').value;
+            var priority = document.getElementById('priority').value;
+            var arrivalTime = document.getElementById('arrivalTime').value;
+            var serviceTime = document.getElementById('serviceTime').value;
+            if (pName == "" || arrivalTime == "" || serviceTime == "" || priority == "") {
+                alert("请输入值后再进行创建！")
+                return false;
+            }
+            if (check(pName, priority, arrivalTime, serviceTime)) {
+                var process = [pName, priority, arrivalTime, serviceTime];
+                processes.push(process);
+                createProcessTable();
+                alert("进程" + process[0] + "创建成功！");
+                document.getElementById("pName").value = "";
+                document.getElementById("priority").value = "";
+                document.getElementById("arrivalTime").value = "";
+                document.getElementById("serviceTime").value = "";
+            }
+        }
+
+        function createProcessTable() {
+            var pTable = document.getElementById("pTable");
+            var code = "    <h3>作业情况：</h3>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "        <tr>\n" +
+                "            <th>进程名</th>\n" +
+                "            <th>优先级</th>\n" +
+                "            <th>到达时间</th>\n" +
+                "            <th>服务时间</th>\n" +
+                "            <th>[操作]</th>\n" +
+                "            <th>\n" +
+                "                <button onclick=\"selectAll()\">[全选进程]</button>\n" +
+                "                <button onclick=\"deleteMultiple()\">[批量删除]</button>\n" +
+                "            </th>\n" +
+                "        </tr>";
+            for (i = 0; i < processes.length; i++) {
+                code += "<tr><td>" + processes[i][0] + "</td>"
+                code += "<td>" + processes[i][1] + "</td>"
+                code += "<td>" + processes[i][2] + "</td>"
+                code += "<td>" + processes[i][3] + "</td>"
+                code += "<td><button onclick=\"confirmChange(" + i + ")\">修改</button>"
+                code += "<button onclick=\"deleteSingle(" + i + ")\">删除</button></td>"
+                code += "<td style='text-align: center'><input type=\"checkbox\" name=\"deleteCheckBox\" value=\"" + i + "\"></td></tr>"
+            }
+            code += "</table>"
+            var buttons = document.getElementById("buttons");
+            var buttonsCode = "        <button onclick=\"FCFS()\">先来先服务调度</button>\n" +
+                "        <button onclick=\"RR()\">时间片轮转法</button>\n" +
+                "        <button onclick=\"SPF()\">最短进程优先调度</button>\n" +
+                "        <button onclick=\"PS()\">优先级调度</button>\n" +
+                "        <button onclick=\"MFQ()\">多级反馈队列轮换法</button>";
+            if (processes.length == 0) {
+                code = "";
+                buttonsCode = "";
+                cancelChange();
+            }
+            pTable.innerHTML = code;
+            buttons.innerHTML = buttonsCode;
+        }
+
+        function deleteSingle(i) {
+            if (window.confirm("确定要删除该进程？")) {
+                if (changeIndex >= 0) {
+                    if (changeIndex == i) {
+                        cancelChange();
+                    }
+                }
+                processes.splice(i, 1);
+                createProcessTable();
+            }
+        }
+
+        function confirmChange(i) {
+            if (window.confirm("确定要修改该进程的信息？")) {
+                alert("请在该表下方输入相应信息！");
+                var changeInput = document.getElementById("changeInput");
+                var code = "    <h3>\n" +
+                    "        请修改" + processes[i][0] + "：" +
+                    "        进程名<input type=\"text\" id=\"pNameChange\">\n" +
+                    "        ；优先级<input type=\"text\" id=\"priorityChange\">\n" +
+                    "        ；到达时间<input type=\"text\" id=\"arrivalTimeChange\">\n" +
+                    "        ；服务时间<input type=\"text\" id=\"serviceTimeChange\">\n" +
+                    "        <button onclick=\"change()\">确认修改</button>\n" +
+                    "        <button onclick=\"cancelChange()\">取消修改</button>\n" +
+                    "    </h3>";
+                changeInput.innerHTML = code;
+                document.getElementById('pNameChange').value = processes[i][0];
+                document.getElementById('priorityChange').value = processes[i][1];
+                document.getElementById('arrivalTimeChange').value = processes[i][2];
+                document.getElementById('serviceTimeChange').value = processes[i][3];
+                changeIndex = i;
+            }
+        }
+
+        function change() {
+            var pName = document.getElementById('pNameChange').value;
+            var priority = document.getElementById('priorityChange').value;
+            var arrivalTime = document.getElementById('arrivalTimeChange').value;
+            var serviceTime = document.getElementById('serviceTimeChange').value;
+            if (pName == "" || arrivalTime == "" || serviceTime == "" || priority == "") {
+                alert("请输入值后再进行修改！")
+                return false;
+            }
+            if (pName === processes[changeIndex][0] && priority === processes[changeIndex][1] && arrivalTime === processes[changeIndex][2] && serviceTime === processes[changeIndex][3]) {
+                alert("尚未作出修改！")
+                return false;
+            }
+            var changeItem = processes[changeIndex];
+            processes.splice(changeIndex, 1);
+            if (check(pName, priority, arrivalTime, serviceTime)) {
+                var process = [pName, priority, arrivalTime, serviceTime];
+                processes.splice(changeIndex, 0, process);
+                cancelChange();
+                createProcessTable();
+                alert("修改成功！");
+                changeIndex = -1;
+            } else {
+                processes.splice(changeIndex, 0, changeItem);
+                changeIndex = -1;
+            }
+        }
+
+        function cancelChange() {
+            var changeInput = document.getElementById("changeInput");
+            var code = "";
+            changeInput.innerHTML = code;
+            changeIndex = -1;
+        }
+
+        function RunOnBeforeUnload() {
+            window.onbeforeunload = function () {
+                return "确定要离开吗？";
+            }
+        }
+
+        function selectAll() {
+            var deleteCheckBox = document.getElementsByName("deleteCheckBox");
+            var j = -1;
+            for (i = 0; i < deleteCheckBox.length; i++) {
+                if (deleteCheckBox[i].checked == false) {
+                    j = 1;
+                }
+            }
+            if (j > 0) {
+                for (i = 0; i < deleteCheckBox.length; i++) {
+                    deleteCheckBox[i].checked = true;
+                }
+            } else {
+                for (i = 0; i < deleteCheckBox.length; i++) {
+                    deleteCheckBox[i].checked = false;
+                }
+            }
+        }
+
+        function deleteMultiple() {
+            var deleteCheckBox = document.getElementsByName("deleteCheckBox");
+            var deleteMultiple = [];
+            for (i = 0; i < deleteCheckBox.length; i++) {
+                if (deleteCheckBox[i].checked == true) {
+                    deleteMultiple.push(i);
+                }
+            }
+            if (deleteMultiple == "") {
+                alert("请先选择一个进程！");
+                return false;
+            }
+            if (window.confirm("确定要删除这些进程？")) {
+                if (changeIndex >= 0) {
+                    var k = -1;
+                    for (i = 0; i < deleteMultiple.length; i++) {
+                        if (deleteMultiple[i] == changeIndex) {
+                            k = 1;
+                        }
+                    }
+                    if (k > 0) {
+                        cancelChange();
+                    }
+                }
+                var j = 0;
+                for (i = 0; i < deleteMultiple.length; i++) {
+                    processes.splice(deleteMultiple[i] - j, 1);
+                    j++;
+                }
+                alert("删除成功！");
+                createProcessTable();
+            }
+        }
+
+        function FCFS() { //先来先服务调度
+            var FCFSProcesses = [];
+            var FCFSDiv = document.getElementById("FCFSDiv");
+            var code = "    <h3>先来先服务调度：</h3>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "        <tr>\n" +
+                "            <th></th>\n" +
+                "            <th>进程名</th>\n" +
+                "            <th>优先级</th>\n" +
+                "            <th>到达时间</th>\n" +
+                "            <th>服务时间</th>\n" +
+                "            <th>完成时间</th>\n" +
+                "            <th>周转时间</th>\n" +
+                "            <th>带权周转时间</th>\n" +
+                "        </tr>";
+            var p = [];
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i].length > 4) {
+                    processes[i].splice(4, processes[i].length - 4);
+                }
+                p.push(processes[i]);
+            }
+            for (j = 0; j < processes.length; j++) {
+                var firstIndex = 0;
+                var firstTime = p[0][2];
+                for (i = 0; i < p.length; i++) {
+                    if (p[i][2] < firstTime) {
+                        firstTime = p[i][2];
+                        firstIndex = i;
+                    }
+                }
+                FCFSProcesses.push(p[firstIndex]);
+                p.splice(firstIndex, 1);
+                if (FCFSProcesses.length == processes.length) {
+                    j = processes.length;
+                }
+            }
+            var finishTime = 0;
+            var turnaroundTimeTotal = 0;
+            var weightedTurnaroundTimeTotal = 0;
+            for (i = 0; i < FCFSProcesses.length; i++) {
+                if (i == 0) {
+                    finishTime = parseInt(parseInt(FCFSProcesses[0][2]) + parseInt(FCFSProcesses[0][3]));
+                    FCFSProcesses[i].push(finishTime);
+                } else if (FCFSProcesses[i - 1][4] > FCFSProcesses[i][2]) {
+                    finishTime = parseInt(parseInt(FCFSProcesses[i - 1][4]) + parseInt(FCFSProcesses[i][3]));
+                    FCFSProcesses[i].push(finishTime);
+                } else {
+                    finishTime = parseInt(parseInt(FCFSProcesses[i][2]) + parseInt(FCFSProcesses[i][3]));
+                    FCFSProcesses[i].push(finishTime);
+                }
+                var turnaroundTime = parseInt(parseInt(FCFSProcesses[i][4]) - parseInt(FCFSProcesses[i][2]));
+                var weightedTurnaroundTime = (parseInt(turnaroundTime) / parseInt(FCFSProcesses[i][3])).toFixed(2);
+                FCFSProcesses[i].push(turnaroundTime);
+                FCFSProcesses[i].push(weightedTurnaroundTime);
+                code += "<tr><td></td>";
+                code += "<td>" + FCFSProcesses[i][0] + "</td>";//进程名
+                code += "<td>" + FCFSProcesses[i][1] + "</td>";//优先级
+                code += "<td>" + FCFSProcesses[i][2] + "</td>";//到达时间
+                code += "<td>" + FCFSProcesses[i][3] + "</td>";//服务时间
+                code += "<td>" + FCFSProcesses[i][4] + "</td>";//完成时间
+                code += "<td>" + FCFSProcesses[i][5] + "</td>";//周转时间
+                code += "<td>" + FCFSProcesses[i][6] + "</td></tr>";//带权周转时间
+                turnaroundTimeTotal += parseInt(parseInt(FCFSProcesses[i][4]) - parseInt(FCFSProcesses[i][2]));
+                weightedTurnaroundTimeTotal += parseFloat(((FCFSProcesses[i][4] - FCFSProcesses[i][2]) / FCFSProcesses[i][3]).toFixed(2));
+            }
+            code += "        <tr>\n" +
+                "            <td>平均值</td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td>" + (turnaroundTimeTotal / FCFSProcesses.length).toFixed(2) + "</td>\n" +
+                "            <td>" + (weightedTurnaroundTimeTotal / FCFSProcesses.length).toFixed(2) + "</td>\n" +
+                "        </tr>\n" +
+                "    </table>\n" +
+                "    <p style=\"padding-right: 3cm\">先来先服务的调度算法：最简单的调度算法，既可以用于作业调度，也可以用于程序调度，当作业调度中采用该算法时，系统将按照作业到达的先后次序来进行调度，优先从后备队列中，选择一个或多个位于队列头部的作业，把他们调入内存，分配所需资源、创建进程，然后放入“就绪队列”,直到该进程运行到完成或发生某事件阻塞后，进程调度程序才将处理机分配给其他进程。利于长服务时间的进程运行而不利于短服务时间的进程运行。</p>\n" +
+                "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('FCFSDiv')\">隐藏</button></div>";
+            FCFSDiv.innerHTML = code;
+        }
+
+        function RR() { //时间片轮转法
+
+        }
+
+        function SPF() { //最短进程优先调度
+            var SPFProcesses = [];
+            var SPFDiv = document.getElementById("SPFDiv");
+            var code = "    <h3>最短进程优先调度：</h3>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "    <tr>\n" +
+                "    <th></th>\n" +
+                "    <th>进程名</th>\n" +
+                "    <th>优先级</th>\n" +
+                "    <th>到达时间</th>\n" +
+                "    <th>服务时间</th>\n" +
+                "    <th>完成时间</th>\n" +
+                "    <th>周转时间</th>\n" +
+                "    <th>带权周转时间</th>\n" +
+                "    </tr>";
+            var p = [];
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i].length > 4) {
+                    processes[i].splice(4, processes[i].length - 4);
+                }
+                p.push(processes[i]);
+            }
+            //算法↓
+            for (v = 0; v < processes.length; v++) {
+                var line = [];
+                if (SPFProcesses.length > 0) {
+                    for (k = 0; k < p.length; k++) {
+                        if (p[k][2] <= SPFProcesses[SPFProcesses.length - 1][4]) {
+                            line.push(p[k]);
+                        }
+                    }
+                }
+                if (SPFProcesses.length == 0 || line.length == 0) {
+                    var firstTime = p[0][2];
+                    var firstIndex = 0;
+                    for (j = 0; j < p.length; j++) {
+                        if (p[j][2] < firstTime) {
+                            firstTime = p[j][2];
+                            firstIndex = j;
+                        }
+                    }
+                    p[firstIndex].push(parseInt(p[firstIndex][2]) + parseInt(p[firstIndex][3]));//计算并添加完成时间
+                    SPFProcesses.push(p[firstIndex]);
+                    p.splice(firstIndex, 1);
+                }
+                if (line.length != 0) {
+                    var shortestTime = line[0][3];
+                    var shortestIndex = 0;
+                    for (q = 0; q < line.length; q++) {
+                        if (line[q][3] < shortestTime) {
+                            shortestTime = line[q][3];
+                            shortestIndex = q;
+                        }
+                        if (line[q][3] == shortestTime && line[q][2] < line[shortestIndex][2]) {
+                            shortestTime = line[q][3];
+                            shortestIndex = q;
+                        }
+                    }
+                    p.splice(p.indexOf(line[shortestIndex]), 1);
+                    line[shortestIndex].push(parseInt(parseInt(SPFProcesses[SPFProcesses.length - 1][4]) + parseInt(line[shortestIndex][3])));
+                    SPFProcesses.push(line[shortestIndex]);
+                }
+                if (SPFProcesses.length == processes.length) {
+                    v = processes.length;
+                }
+            }
+            //输出↓
+            var turnaroundTimeTotal = 0;
+            var weightedTurnaroundTimeTotal = 0;
+            for (e = 0; e < SPFProcesses.length; e++) {
+                turnaroundTime = parseInt(parseInt(SPFProcesses[e][4]) - parseInt(SPFProcesses[e][2]));
+                weightedTurnaroundTime = (parseInt(turnaroundTime) / parseInt(SPFProcesses[e][3])).toFixed(2);
+                SPFProcesses[e].push(turnaroundTime);
+                SPFProcesses[e].push(weightedTurnaroundTime);
+                code += "<tr><td></td>";
+                code += "<td>" + SPFProcesses[e][0] + "</td>";//进程名
+                code += "<td>" + SPFProcesses[e][1] + "</td>";//优先级
+                code += "<td>" + SPFProcesses[e][2] + "</td>";//到达时间
+                code += "<td>" + SPFProcesses[e][3] + "</td>";//服务时间
+                code += "<td>" + SPFProcesses[e][4] + "</td>";//完成时间
+                code += "<td>" + SPFProcesses[e][5] + "</td>";//周转时间
+                code += "<td>" + SPFProcesses[e][6] + "</td></tr>";//带权周转时间
+                turnaroundTimeTotal += parseInt(parseInt(SPFProcesses[e][4]) - parseInt(SPFProcesses[e][2]));
+                weightedTurnaroundTimeTotal += parseFloat(((SPFProcesses[e][4] - SPFProcesses[e][2]) / SPFProcesses[e][3]).toFixed(2));
+            }
+            code += "    <tr>\n" +
+                "    <td>平均值</td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td>" + (turnaroundTimeTotal / SPFProcesses.length).toFixed(2) + "</td>\n" +
+                "    <td>" + (weightedTurnaroundTimeTotal / SPFProcesses.length).toFixed(2) + "</td>\n" +
+                "    </tr>\n" +
+                "    </table>\n" +
+                "    <p style=\"padding-right: 3cm\">最短进程优先调度：最短进程优先调度算法是一种非抢占式的策略，其原则是下一次选择所需处理时间最短的进程占有CPU运行。</p>\n" +
+                "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('SPFDiv')\">隐藏</button></div>";
+            SPFDiv.innerHTML = code;
+        }
+
+        function PS() { //优先级调度
+            var PSProcesses = [];
+            var PSDiv = document.getElementById("PSDiv");
+            var code = "    <h3>优先级调度：</h3>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "    <tr>\n" +
+                "    <th></th>\n" +
+                "    <th>进程名</th>\n" +
+                "    <th>优先级</th>\n" +
+                "    <th>到达时间</th>\n" +
+                "    <th>服务时间</th>\n" +
+                "    <th>完成时间</th>\n" +
+                "    <th>周转时间</th>\n" +
+                "    <th>带权周转时间</th>\n" +
+                "    </tr>";
+            var p = [];
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i].length > 4) {
+                    processes[i].splice(4, processes[i].length - 4);
+                }
+                p.push(processes[i]);
+            }
+            //算法↓
+            for (v = 0; v < processes.length; v++) {
+                var line = [];
+                if (PSProcesses.length > 0) {
+                    for (k = 0; k < p.length; k++) {
+                        if (p[k][2] <= PSProcesses[PSProcesses.length - 1][4]) {
+                            line.push(p[k]);
+                        }
+                    }
+                }
+                if (PSProcesses.length == 0 || line.length == 0) {
+                    var firstTime = p[0][2];
+                    var firstIndex = 0;
+                    for (j = 0; j < p.length; j++) {
+                        if (p[j][2] < firstTime) {
+                            firstTime = p[j][2];
+                            firstIndex = j;
+                        }
+                    }
+                    p[firstIndex].push(parseInt(p[firstIndex][2]) + parseInt(p[firstIndex][3]));//计算并添加完成时间
+                    PSProcesses.push(p[firstIndex]);
+                    p.splice(firstIndex, 1);
+                }
+                if (line.length != 0) {
+                    var highestPriority = line[0][1];
+                    var highestIndex = 0;
+                    for (q = 0; q < line.length; q++) {
+                        if (line[q][1] > highestPriority) {
+                            highestPriority = line[q][1];
+                            highestIndex = q;
+                        }
+                        if (line[q][1] == highestPriority && line[q][2] < line[highestIndex][2]) {
+                            highestPriority = line[q][1];
+                            highestIndex = q;
+                        }
+                    }
+                    p.splice(p.indexOf(line[highestIndex]), 1);
+                    line[highestIndex].push(parseInt(parseInt(PSProcesses[PSProcesses.length - 1][4]) + parseInt(line[highestIndex][3])));
+                    PSProcesses.push(line[highestIndex]);
+                }
+                if (PSProcesses.length == processes.length) {
+                    v = processes.length;
+                }
+            }
+            //输出↓
+            var turnaroundTimeTotal = 0;
+            var weightedTurnaroundTimeTotal = 0;
+            for (e = 0; e < PSProcesses.length; e++) {
+                turnaroundTime = parseInt(parseInt(PSProcesses[e][4]) - parseInt(PSProcesses[e][2]));
+                weightedTurnaroundTime = (parseInt(turnaroundTime) / parseInt(PSProcesses[e][3])).toFixed(2);
+                PSProcesses[e].push(turnaroundTime);
+                PSProcesses[e].push(weightedTurnaroundTime);
+                code += "<tr><td></td>";
+                code += "<td>" + PSProcesses[e][0] + "</td>";//进程名
+                code += "<td>" + PSProcesses[e][1] + "</td>";//优先级
+                code += "<td>" + PSProcesses[e][2] + "</td>";//到达时间
+                code += "<td>" + PSProcesses[e][3] + "</td>";//服务时间
+                code += "<td>" + PSProcesses[e][4] + "</td>";//完成时间
+                code += "<td>" + PSProcesses[e][5] + "</td>";//周转时间
+                code += "<td>" + PSProcesses[e][6] + "</td></tr>";//带权周转时间
+                turnaroundTimeTotal += parseInt(parseInt(PSProcesses[e][4]) - parseInt(PSProcesses[e][2]));
+                weightedTurnaroundTimeTotal += parseFloat(((PSProcesses[e][4] - PSProcesses[e][2]) / PSProcesses[e][3]).toFixed(2));
+            }
+            code += "    <tr>\n" +
+                "    <td>平均值</td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td></td>\n" +
+                "    <td>" + (turnaroundTimeTotal / PSProcesses.length).toFixed(2) + "</td>\n" +
+                "    <td>" + (weightedTurnaroundTimeTotal / PSProcesses.length).toFixed(2) + "</td>\n" +
+                "    </tr>\n" +
+                "    </table>\n" +
+                "    <p style=\"padding-right: 3cm\">优先级调度：优先级调度算法常用在批处理系统和实时系统中。它把处理器分配给就绪队列中具有最高优先级的进程，当具有最高优先级的进程有两个或两个以上时，采用先来先服务调度算法进行调度。是一种非抢占式调度策略。</p>\n" +
+                "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('PSDiv')\">隐藏</button></div>";
+            PSDiv.innerHTML = code;
+        }
+
+        function MFQ() { //多级反馈队列轮换法
+
+        }
+
+        function hide(tableName) {
+            var table = document.getElementById(tableName);
+            var code = "";
+            table.innerHTML = code;
+        }
+    </script>
+
+</head>
+
+<body onload="RunOnBeforeUnload()">
+<div align="center"><h1>单处理器短程调度算法模拟程序</h1></div>
+
+<div align="left" style="padding-left: 5cm">
+    <h3>
+        请创建一个进程：
+        进程名<input type="text" id="pName">
+        ；优先级<input type="text" id="priority">
+        ；到达时间<input type="text" id="arrivalTime">
+        ；服务时间<input type="text" id="serviceTime">
+        <button onclick="createProcess()">创建</button>
+    </h3>
+    <p>[提示：进程名最多由5个字母、数字或下划线组成且不允许重复，优先级从0到9逐级递增，到达时间为正整数或0且不允许重复，服务时间为正整数]</p>
+</div>
+
+<div align="left" style="padding-left: 5cm" id="pTable"></div>
+<div align="left" style="padding-left: 5cm" id="changeInput"></div>
+<div align="center" style="padding-top: 1cm" id="buttons"></div>
+<div align="left" style="padding-left: 5cm" id="FCFSDiv"></div>
+<div align="left" style="padding-left: 5cm" id="RRDiv">
+    <!--<h3>最短进程优先调度：</h3>-->
+    <!--<table border = "1cm" cellpadding = "10">-->
+    <!--<tr>-->
+    <!--<th></th>-->
+    <!--<th>进程名</th>-->
+    <!--<th>优先级</th>-->
+    <!--<th>到达时间</th>-->
+    <!--<th>服务时间</th>-->
+    <!--<th>完成时间</th>-->
+    <!--<th>周转时间</th>-->
+    <!--<th>带权周转时间</th>-->
+    <!--</tr>-->
+
+    <!--<tr>-->
+    <!--<td>平均值</td>-->
+    <!--<td></td>-->
+    <!--<td></td>-->
+    <!--<td></td>-->
+    <!--<td></td>-->
+    <!--<td></td>-->
+    <!--<td>平均周转时间</td>-->
+    <!--<td>平均带权周转时间</td>-->
+    <!--</tr>-->
+    <!--</table>-->
+    <!--<p style="padding-right: 3cm">最短进程优先调度：</p>-->
+    <!--<div align="center" style="padding-right: 5cm"><button onclick="hide('SPFDiv')">隐藏</button></div>-->
+</div>
+<div align="left" style="padding-left: 5cm" id="SPFDiv"></div>
+<div align="left" style="padding-left: 5cm" id="PSDiv"></div>
+<div align="left" style="padding-left: 5cm" id="MFQDiv"></div>
+</body>
+</html>
