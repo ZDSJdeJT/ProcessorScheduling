@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>处理器调度</title>
+    <title>单处理器短程调度算法模拟程序</title>
 
     <script>
         var processes = [];
@@ -62,7 +62,7 @@
         }
 
         function createProcess() {
-            if (processes.length > 50) {
+            if (processes.length >= 50) {
                 alert("进程数量达到上限！")
                 return false;
             }
@@ -262,7 +262,7 @@
                 "        <tr>\n" +
                 "            <th></th>\n" +
                 "            <th>进程名</th>\n" +
-                "            <th>优先级</th>\n" +
+//                "            <th>优先级</th>\n" +
                 "            <th>到达时间</th>\n" +
                 "            <th>服务时间</th>\n" +
                 "            <th>完成时间</th>\n" +
@@ -276,6 +276,7 @@
                 }
                 p.push(processes[i]);
             }
+            //算法 + 输出↓
             for (j = 0; j < processes.length; j++) {
                 var firstIndex = 0;
                 var firstTime = p[0][2];
@@ -311,7 +312,7 @@
                 FCFSProcesses[i].push(weightedTurnaroundTime);
                 code += "<tr><td></td>";
                 code += "<td>" + FCFSProcesses[i][0] + "</td>";//进程名
-                code += "<td>" + FCFSProcesses[i][1] + "</td>";//优先级
+//                code += "<td>" + FCFSProcesses[i][1] + "</td>";//优先级
                 code += "<td>" + FCFSProcesses[i][2] + "</td>";//到达时间
                 code += "<td>" + FCFSProcesses[i][3] + "</td>";//服务时间
                 code += "<td>" + FCFSProcesses[i][4] + "</td>";//完成时间
@@ -322,7 +323,7 @@
             }
             code += "        <tr>\n" +
                 "            <td>平均值</td>\n" +
-                "            <td></td>\n" +
+//                "            <td></td>\n" +
                 "            <td></td>\n" +
                 "            <td></td>\n" +
                 "            <td></td>\n" +
@@ -337,7 +338,123 @@
         }
 
         function RR() { //时间片轮转法
-
+            var RRProcesses = [];
+            var RRDiv = document.getElementById("RRDiv");
+            var code = "    <h3>时间片轮转法：</h3>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "        <tr>\n" +
+                "            <th></th>\n" +
+                "            <th>进程名</th>\n" +
+                //                "            <th>优先级</th>\n" +
+                "            <th>到达时间</th>\n" +
+                "            <th>服务时间</th>\n" +
+                "            <th>完成时间</th>\n" +
+                "            <th>周转时间</th>\n" +
+                "            <th>带权周转时间</th>\n" +
+                "        </tr>";
+            var p = [];
+            var lineChange = [];
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i].length > 4) {
+                    processes[i].splice(4, processes[i].length - 4);
+                }
+                p.push(processes[i]);
+            }
+            //算法（关键在于计算每个进程的完成时间）↓
+            for (j = 0; j < processes.length; j++) {  //按到达时间进行排序
+                var firstIndex = 0;
+                var firstTime = p[0][2];
+                for (i = 0; i < p.length; i++) {
+                    if (p[i][2] < firstTime) {
+                        firstTime = p[i][2];
+                        firstIndex = i;
+                    }
+                }
+                lineChange.push(p[firstIndex]);
+                p.splice(firstIndex, 1);
+                if (lineChange.length == processes.length) {
+                    j = processes.length;
+                }
+            }
+            var running = [];
+            var slot = 5; //时间片大小
+            var notAllFinished = true;
+            debugger;
+            while (notAllFinished) {
+                if (running.length == 0) {
+                    var currentTime = lineChange[0][2];
+                }
+                var o = 0;
+                for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                    if (lineChange[a][2] <= parseInt(currentTime)) {
+                        running.splice(o, 0, lineChange[a]);
+                        lineChange.splice(a, 1);
+                        a--;
+                        o++;
+                    }
+                }
+                currentTime = parseInt(parseInt(currentTime) + parseInt(slot)); //时间片推移
+                if (running.length != 0) {
+                    var state = running[0];
+                    if (state.length > 4) {
+                        var remainingTime = parseInt(parseInt(state[4]) - parseInt(slot));
+                    } else {
+                        var remainingTime = parseInt(parseInt(state[3]) - parseInt(slot));
+                    }
+                    if (remainingTime > 0) { //若该时间片内该进程尚未执行结束
+                        state.splice(4, 1, remainingTime);
+                        running.splice(0, 1);
+                        running.splice(running.length, 0, state);
+                    } else if (remainingTime == 0) {
+                        RRProcesses.push(state); //为已执行结束的进程添加完成时间
+                        RRProcesses[RRProcesses.indexOf(state)].push(currentTime);
+                        running.splice(0, 1);
+                    }
+                    else {
+                        currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
+                        RRProcesses.push(state); //为已执行结束的进程添加完成时间
+                        RRProcesses[RRProcesses.indexOf(state)].push(currentTime);
+                        running.splice(0, 1);
+                    }
+                }
+                //判断是否所有进程都含有结束时间，若均含有，则循环结束，进行输出
+                if (RRProcesses.length == processes.length) {
+                    notAllFinished = false;
+                }
+            }
+            //输出↓
+            var turnaroundTimeTotal = 0;
+            var weightedTurnaroundTimeTotal = 0;
+            for (i = 0; i < RRProcesses.length; i++) {
+                var turnaroundTime = parseInt(parseInt(RRProcesses[i][RRProcesses[i].length - 1]) - parseInt(RRProcesses[i][2]));
+                var weightedTurnaroundTime = (parseInt(turnaroundTime) / parseInt(RRProcesses[i][3])).toFixed(2);
+                RRProcesses[i].push(turnaroundTime);
+                RRProcesses[i].push(weightedTurnaroundTime);
+                code += "<tr><td></td>";
+                code += "<td>" + RRProcesses[i][0] + "</td>";//进程名
+//                code += "<td>" + RRProcesses[i][1] + "</td>";//优先级
+                code += "<td>" + RRProcesses[i][2] + "</td>";//到达时间
+                code += "<td>" + RRProcesses[i][3] + "</td>";//服务时间
+                code += "<td>" + RRProcesses[i][RRProcesses[i].length - 3] + "</td>";//完成时间
+                code += "<td>" + RRProcesses[i][RRProcesses[i].length - 2] + "</td>";//周转时间
+                code += "<td>" + RRProcesses[i][RRProcesses[i].length - 1] + "</td></tr>";//带权周转时间
+                turnaroundTimeTotal += parseInt(parseInt(RRProcesses[i][RRProcesses[i].length - 3]) - parseInt(RRProcesses[i][2]));
+                weightedTurnaroundTimeTotal += parseFloat(((RRProcesses[i][RRProcesses[i].length - 3] - RRProcesses[i][2]) / RRProcesses[i][3]).toFixed(2));
+            }
+            code += "        <tr>\n" +
+                "            <td>平均值</td>\n" +
+                //                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td>" + (turnaroundTimeTotal / RRProcesses.length).toFixed(2) + "</td>\n" +
+                "            <td>" + (weightedTurnaroundTimeTotal / RRProcesses.length).toFixed(2) + "</td>\n" +
+                "        </tr>\n" +
+                "    </table>\n" +
+                "    <p style=\"padding-right: 3cm\">时间片轮转法：</p>\n" +
+                "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('RRDiv')\">隐藏</button></div>";
+            RRDiv.innerHTML = code;
         }
 
         function SPF() { //最短进程优先调度
@@ -348,7 +465,7 @@
                 "    <tr>\n" +
                 "    <th></th>\n" +
                 "    <th>进程名</th>\n" +
-                "    <th>优先级</th>\n" +
+//                "    <th>优先级</th>\n" +
                 "    <th>到达时间</th>\n" +
                 "    <th>服务时间</th>\n" +
                 "    <th>完成时间</th>\n" +
@@ -416,7 +533,7 @@
                 SPFProcesses[e].push(weightedTurnaroundTime);
                 code += "<tr><td></td>";
                 code += "<td>" + SPFProcesses[e][0] + "</td>";//进程名
-                code += "<td>" + SPFProcesses[e][1] + "</td>";//优先级
+//                code += "<td>" + SPFProcesses[e][1] + "</td>";//优先级
                 code += "<td>" + SPFProcesses[e][2] + "</td>";//到达时间
                 code += "<td>" + SPFProcesses[e][3] + "</td>";//服务时间
                 code += "<td>" + SPFProcesses[e][4] + "</td>";//完成时间
@@ -427,7 +544,7 @@
             }
             code += "    <tr>\n" +
                 "    <td>平均值</td>\n" +
-                "    <td></td>\n" +
+//                "    <td></td>\n" +
                 "    <td></td>\n" +
                 "    <td></td>\n" +
                 "    <td></td>\n" +
@@ -436,7 +553,7 @@
                 "    <td>" + (weightedTurnaroundTimeTotal / SPFProcesses.length).toFixed(2) + "</td>\n" +
                 "    </tr>\n" +
                 "    </table>\n" +
-                "    <p style=\"padding-right: 3cm\">最短进程优先调度：最短进程优先调度算法是一种非抢占式的策略，其原则是下一次选择所需处理时间最短的进程占有CPU运行。</p>\n" +
+                "    <p style=\"padding-right: 3cm\">最短进程优先调度：最短进程优先调度算法是一种非抢占式的调度策略，其原则是下一次选择所需处理时间最短的进程占有CPU运行。</p>\n" +
                 "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('SPFDiv')\">隐藏</button></div>";
             SPFDiv.innerHTML = code;
         }
