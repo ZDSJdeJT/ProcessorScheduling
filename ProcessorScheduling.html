@@ -262,7 +262,7 @@
                 "        <tr>\n" +
                 "            <th></th>\n" +
                 "            <th>进程名</th>\n" +
-//                "            <th>优先级</th>\n" +
+                //                "            <th>优先级</th>\n" +
                 "            <th>到达时间</th>\n" +
                 "            <th>服务时间</th>\n" +
                 "            <th>完成时间</th>\n" +
@@ -281,7 +281,7 @@
                 var firstIndex = 0;
                 var firstTime = p[0][2];
                 for (i = 0; i < p.length; i++) {
-                    if (p[i][2] < firstTime) {
+                    if (parseInt(p[i][2]) < parseInt(firstTime)) {
                         firstTime = p[i][2];
                         firstIndex = i;
                     }
@@ -323,7 +323,7 @@
             }
             code += "        <tr>\n" +
                 "            <td>平均值</td>\n" +
-//                "            <td></td>\n" +
+                //                "            <td></td>\n" +
                 "            <td></td>\n" +
                 "            <td></td>\n" +
                 "            <td></td>\n" +
@@ -341,6 +341,7 @@
             var RRProcesses = [];
             var RRDiv = document.getElementById("RRDiv");
             var code = "    <h3>时间片轮转法：</h3>\n" +
+                "    <p style=\"padding-right: 3cm\">[时间片长度：5]</p>\n" +
                 "    <table border = \"1cm\" cellpadding = \"10\">\n" +
                 "        <tr>\n" +
                 "            <th></th>\n" +
@@ -365,7 +366,7 @@
                 var firstIndex = 0;
                 var firstTime = p[0][2];
                 for (i = 0; i < p.length; i++) {
-                    if (p[i][2] < firstTime) {
+                    if (parseInt(p[i][2]) < parseInt(firstTime)) {
                         firstTime = p[i][2];
                         firstIndex = i;
                     }
@@ -379,18 +380,15 @@
             var running = [];
             var slot = 5; //时间片大小
             var notAllFinished = true;
-            debugger;
             while (notAllFinished) {
                 if (running.length == 0) {
                     var currentTime = lineChange[0][2];
                 }
-                var o = 0;
                 for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
-                    if (lineChange[a][2] <= parseInt(currentTime)) {
-                        running.splice(o, 0, lineChange[a]);
+                    if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                        running.push(lineChange[a]);
                         lineChange.splice(a, 1);
                         a--;
-                        o++;
                     }
                 }
                 currentTime = parseInt(parseInt(currentTime) + parseInt(slot)); //时间片推移
@@ -403,18 +401,29 @@
                     }
                     if (remainingTime > 0) { //若该时间片内该进程尚未执行结束
                         state.splice(4, 1, remainingTime);
+                        for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                                running.push(lineChange[a]);
+                                lineChange.splice(a, 1);
+                                a--;
+                            }
+                        }
                         running.splice(0, 1);
                         running.splice(running.length, 0, state);
-                    } else if (remainingTime == 0) {
+                    } else { //若该时间片内进程执行结束
+                        if (remainingTime < 0) {
+                            currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
+                        }
                         RRProcesses.push(state); //为已执行结束的进程添加完成时间
                         RRProcesses[RRProcesses.indexOf(state)].push(currentTime);
                         running.splice(0, 1);
-                    }
-                    else {
-                        currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
-                        RRProcesses.push(state); //为已执行结束的进程添加完成时间
-                        RRProcesses[RRProcesses.indexOf(state)].push(currentTime);
-                        running.splice(0, 1);
+                        for (z = 0; z < lineChange.length; z++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[z][2]) <= parseInt(currentTime)) {
+                                running.push(lineChange[z]);
+                                lineChange.splice(z, 1);
+                                z--;
+                            }
+                        }
                     }
                 }
                 //判断是否所有进程都含有结束时间，若均含有，则循环结束，进行输出
@@ -452,7 +461,7 @@
                 "            <td>" + (weightedTurnaroundTimeTotal / RRProcesses.length).toFixed(2) + "</td>\n" +
                 "        </tr>\n" +
                 "    </table>\n" +
-                "    <p style=\"padding-right: 3cm\">时间片轮转法：</p>\n" +
+                "    <p style=\"padding-right: 3cm\">时间片轮转法：时间片轮转法是把CPU根据时间片（一个较小的时间单元）按顺序赋予就绪队列中的每一个进程，即就绪队列中各进程轮流占用CPU执行一定的时间。若某个进程在规定时间片内未执行完毕，也必须释放CPU，并把CPU分配给下一个就绪进程。是一种剥夺式调度。对于未完成执行的进程，释放CPU后回到就绪队列的末尾排队，等待下一轮时间片。</p>\n" +
                 "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('RRDiv')\">隐藏</button></div>";
             RRDiv.innerHTML = code;
         }
@@ -465,7 +474,7 @@
                 "    <tr>\n" +
                 "    <th></th>\n" +
                 "    <th>进程名</th>\n" +
-//                "    <th>优先级</th>\n" +
+                //                "    <th>优先级</th>\n" +
                 "    <th>到达时间</th>\n" +
                 "    <th>服务时间</th>\n" +
                 "    <th>完成时间</th>\n" +
@@ -506,11 +515,11 @@
                     var shortestTime = line[0][3];
                     var shortestIndex = 0;
                     for (q = 0; q < line.length; q++) {
-                        if (line[q][3] < shortestTime) {
+                        if (parseInt(line[q][3]) < parseInt(shortestTime)) {
                             shortestTime = line[q][3];
                             shortestIndex = q;
                         }
-                        if (line[q][3] == shortestTime && line[q][2] < line[shortestIndex][2]) {
+                        if (parseInt(line[q][3]) == parseInt(shortestTime) && parseInt(line[q][2]) < parseInt(line[shortestIndex][2])) {
                             shortestTime = line[q][3];
                             shortestIndex = q;
                         }
@@ -544,7 +553,7 @@
             }
             code += "    <tr>\n" +
                 "    <td>平均值</td>\n" +
-//                "    <td></td>\n" +
+                //                "    <td></td>\n" +
                 "    <td></td>\n" +
                 "    <td></td>\n" +
                 "    <td></td>\n" +
@@ -607,11 +616,11 @@
                     var highestPriority = line[0][1];
                     var highestIndex = 0;
                     for (q = 0; q < line.length; q++) {
-                        if (line[q][1] > highestPriority) {
+                        if (parseInt(line[q][1]) > parseInt(highestPriority)) {
                             highestPriority = line[q][1];
                             highestIndex = q;
                         }
-                        if (line[q][1] == highestPriority && line[q][2] < line[highestIndex][2]) {
+                        if (parseInt(line[q][1]) == parseInt(highestPriority) && parseInt(line[q][2]) < parseInt(line[highestIndex][2])) {
                             highestPriority = line[q][1];
                             highestIndex = q;
                         }
@@ -660,7 +669,204 @@
         }
 
         function MFQ() { //多级反馈队列轮换法
-
+            var MFQProcesses = [];
+            var MFQDiv = document.getElementById("MFQDiv");
+            var code = "    <h3>多级反馈队列轮换法：</h3>\n" +
+                "    <p style=\"padding-right: 3cm\">[本程序采用三级反馈队列，时间片长度：5/ 10/ 20]</p>\n" +
+                "    <table border = \"1cm\" cellpadding = \"10\">\n" +
+                "        <tr>\n" +
+                "            <th></th>\n" +
+                "            <th>进程名</th>\n" +
+                //                "            <th>优先级</th>\n" +
+                "            <th>到达时间</th>\n" +
+                "            <th>服务时间</th>\n" +
+                "            <th>完成时间</th>\n" +
+                "            <th>周转时间</th>\n" +
+                "            <th>带权周转时间</th>\n" +
+                "        </tr>";
+            var p = [];
+            var lineChange = [];
+            for (i = 0; i < processes.length; i++) {
+                if (processes[i].length > 4) {
+                    processes[i].splice(4, processes[i].length - 4);
+                }
+                p.push(processes[i]);
+            }
+            //算法（关键在于计算每个进程的完成时间）↓
+            for (j = 0; j < processes.length; j++) {  //按到达时间进行排序
+                var firstIndex = 0;
+                var firstTime = p[0][2];
+                for (i = 0; i < p.length; i++) {
+                    if (p[i][2] < firstTime) {
+                        firstTime = p[i][2];
+                        firstIndex = i;
+                    }
+                }
+                lineChange.push(p[firstIndex]);
+                p.splice(firstIndex, 1);
+                if (lineChange.length == processes.length) {
+                    j = processes.length;
+                }
+            }
+            var running1 = [];
+            var running2 = [];
+            var running3 = [];
+            var slot1 = 5; //时间片大小
+            var slot2 = 10; //时间片大小
+            var slot3 = 20; //时间片大小
+            var notAllFinished = true;
+            while (notAllFinished) {
+                if (running1.length == 0 && running2.length == 0 && running3.length == 0) {
+                    var currentTime = lineChange[0][2];
+                }
+                for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                    if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                        running1.push(lineChange[a]);
+                        lineChange.splice(a, 1);
+                        a--;
+                    }
+                }
+                if (running1.length != 0) {
+                    currentTime = parseInt(parseInt(currentTime) + parseInt(slot1)); //时间片推移
+                    var state = running1[0];
+                    if (state.length > 4) {
+                        var remainingTime = parseInt(parseInt(state[4]) - parseInt(slot1));
+                    } else {
+                        var remainingTime = parseInt(parseInt(state[3]) - parseInt(slot1));
+                    }
+                    if (remainingTime > 0) { //若该时间片内该进程尚未执行结束
+                        state.splice(4, 1, remainingTime);
+                        for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[a]);
+                                lineChange.splice(a, 1);
+                                a--;
+                            }
+                        }
+                        running1.splice(0, 1);
+                        running2.push(state);
+                    } else { //若该时间片内进程执行结束
+                        if (remainingTime < 0) {
+                            currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
+                        }
+                        MFQProcesses.push(state); //为已执行结束的进程添加完成时间
+                        MFQProcesses[MFQProcesses.indexOf(state)].push(currentTime);
+                        running1.splice(0, 1);
+                        for (z = 0; z < lineChange.length; z++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[z][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[z]);
+                                lineChange.splice(z, 1);
+                                z--;
+                            }
+                        }
+                    }
+                } else if (running2.length != 0) {
+                    currentTime = parseInt(parseInt(currentTime) + parseInt(slot2)); //时间片推移
+                    var state = running2[0];
+                    if (state.length > 4) {
+                        var remainingTime = parseInt(parseInt(state[4]) - parseInt(slot2));
+                    } else {
+                        var remainingTime = parseInt(parseInt(state[3]) - parseInt(slot2));
+                    }
+                    if (remainingTime > 0) { //若该时间片内该进程尚未执行结束
+                        state.splice(4, 1, remainingTime);
+                        for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[a]);
+                                lineChange.splice(a, 1);
+                                a--;
+                            }
+                        }
+                        running2.splice(0, 1);
+                        running3.push(state);
+                    } else { //若该时间片内进程执行结束
+                        if (remainingTime < 0) {
+                            currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
+                        }
+                        MFQProcesses.push(state); //为已执行结束的进程添加完成时间
+                        MFQProcesses[MFQProcesses.indexOf(state)].push(currentTime);
+                        running2.splice(0, 1);
+                        for (z = 0; z < lineChange.length; z++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[z][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[z]);
+                                lineChange.splice(z, 1);
+                                z--;
+                            }
+                        }
+                    }
+                } else if (running3.length != 0) {
+                    currentTime = parseInt(parseInt(currentTime) + parseInt(slot3)); //时间片推移
+                    var state = running3[0];
+                    if (state.length > 4) {
+                        var remainingTime = parseInt(parseInt(state[4]) - parseInt(slot3));
+                    } else {
+                        var remainingTime = parseInt(parseInt(state[3]) - parseInt(slot3));
+                    }
+                    if (remainingTime > 0) { //若该时间片内该进程尚未执行结束
+                        state.splice(4, 1, remainingTime);
+                        for (a = 0; a < lineChange.length; a++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[a][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[a]);
+                                lineChange.splice(a, 1);
+                                a--;
+                            }
+                        }
+                        running3.splice(0, 1);
+                        running3.splice(running3.length, 0, state);
+                    } else { //若该时间片内进程执行结束
+                        if (remainingTime < 0) {
+                            currentTime = parseInt(parseInt(currentTime) + parseInt(remainingTime));
+                        }
+                        MFQProcesses.push(state); //为已执行结束的进程添加完成时间
+                        MFQProcesses[MFQProcesses.indexOf(state)].push(currentTime);
+                        running3.splice(0, 1);
+                        for (z = 0; z < lineChange.length; z++) { //获取当前时间已到达的进程队列
+                            if (parseInt(lineChange[z][2]) <= parseInt(currentTime)) {
+                                running1.push(lineChange[z]);
+                                lineChange.splice(z, 1);
+                                z--;
+                            }
+                        }
+                    }
+                }
+                //判断是否所有进程都含有结束时间，若均含有，则循环结束，进行输出
+                if (MFQProcesses.length == processes.length) {
+                    notAllFinished = false;
+                }
+            }
+            //输出↓
+            var turnaroundTimeTotal = 0;
+            var weightedTurnaroundTimeTotal = 0;
+            for (i = 0; i < MFQProcesses.length; i++) {
+                var turnaroundTime = parseInt(parseInt(MFQProcesses[i][MFQProcesses[i].length - 1]) - parseInt(MFQProcesses[i][2]));
+                var weightedTurnaroundTime = (parseInt(turnaroundTime) / parseInt(MFQProcesses[i][3])).toFixed(2);
+                MFQProcesses[i].push(turnaroundTime);
+                MFQProcesses[i].push(weightedTurnaroundTime);
+                code += "<tr><td></td>";
+                code += "<td>" + MFQProcesses[i][0] + "</td>";//进程名
+//                code += "<td>" + MFQProcesses[i][1] + "</td>";//优先级
+                code += "<td>" + MFQProcesses[i][2] + "</td>";//到达时间
+                code += "<td>" + MFQProcesses[i][3] + "</td>";//服务时间
+                code += "<td>" + MFQProcesses[i][MFQProcesses[i].length - 3] + "</td>";//完成时间
+                code += "<td>" + MFQProcesses[i][MFQProcesses[i].length - 2] + "</td>";//周转时间
+                code += "<td>" + MFQProcesses[i][MFQProcesses[i].length - 1] + "</td></tr>";//带权周转时间
+                turnaroundTimeTotal += parseInt(parseInt(MFQProcesses[i][MFQProcesses[i].length - 3]) - parseInt(MFQProcesses[i][2]));
+                weightedTurnaroundTimeTotal += parseFloat(((MFQProcesses[i][MFQProcesses[i].length - 3] - MFQProcesses[i][2]) / MFQProcesses[i][3]).toFixed(2));
+            }
+            code += "        <tr>\n" +
+                "            <td>平均值</td>\n" +
+                //                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td></td>\n" +
+                "            <td>" + (turnaroundTimeTotal / MFQProcesses.length).toFixed(2) + "</td>\n" +
+                "            <td>" + (weightedTurnaroundTimeTotal / MFQProcesses.length).toFixed(2) + "</td>\n" +
+                "        </tr>\n" +
+                "    </table>\n" +
+                "    <p style=\"padding-right: 3cm\">多级反馈队列轮换法：多级反馈队列轮换法就是把时间片轮转法中的单就绪队列改为双就绪队列或多就绪队列，并赋给每个队列不同的优先权。</p>\n" +
+                "    <div align=\"center\" style=\"padding-right: 5cm\"><button onclick=\"hide('MFQDiv')\">隐藏</button></div>";
+            MFQDiv.innerHTML = code;
         }
 
         function hide(tableName) {
@@ -669,6 +875,52 @@
             table.innerHTML = code;
         }
     </script>
+
+    <style type="text/css">
+        body{
+            font-family: "幼圆";
+        }
+        p{
+            letter-spacing:1px;
+        }
+        button {
+            padding: 4px 4px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            -webkit-transition-duration: 0.4s; /* Safari */
+            transition-duration: 0.4s;
+            cursor: pointer;
+            background-color: white;
+            color: black;
+            border: 2px solid #D8D8D8;
+        }
+        button:hover {
+            background-color: #e7e7e7;
+        }
+        input{
+            border: 1px solid #ccc;
+            padding: 7px 0px;
+            border-radius: 3px;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+            -webkit-transition: border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+            transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+        }
+        input:focus{
+            border-color: #66afe9;
+            outline: 0;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075),0 0 8px rgba(102,175,233,.6);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075),0 0 8px rgba(102,175,233,.6);
+        }
+        table{
+            background-color: #EFF8FB;
+            border-spacing: 0;
+        }
+    </style>
 
 </head>
 
@@ -691,34 +943,7 @@
 <div align="left" style="padding-left: 5cm" id="changeInput"></div>
 <div align="center" style="padding-top: 1cm" id="buttons"></div>
 <div align="left" style="padding-left: 5cm" id="FCFSDiv"></div>
-<div align="left" style="padding-left: 5cm" id="RRDiv">
-    <!--<h3>最短进程优先调度：</h3>-->
-    <!--<table border = "1cm" cellpadding = "10">-->
-    <!--<tr>-->
-    <!--<th></th>-->
-    <!--<th>进程名</th>-->
-    <!--<th>优先级</th>-->
-    <!--<th>到达时间</th>-->
-    <!--<th>服务时间</th>-->
-    <!--<th>完成时间</th>-->
-    <!--<th>周转时间</th>-->
-    <!--<th>带权周转时间</th>-->
-    <!--</tr>-->
-
-    <!--<tr>-->
-    <!--<td>平均值</td>-->
-    <!--<td></td>-->
-    <!--<td></td>-->
-    <!--<td></td>-->
-    <!--<td></td>-->
-    <!--<td></td>-->
-    <!--<td>平均周转时间</td>-->
-    <!--<td>平均带权周转时间</td>-->
-    <!--</tr>-->
-    <!--</table>-->
-    <!--<p style="padding-right: 3cm">最短进程优先调度：</p>-->
-    <!--<div align="center" style="padding-right: 5cm"><button onclick="hide('SPFDiv')">隐藏</button></div>-->
-</div>
+<div align="left" style="padding-left: 5cm" id="RRDiv"></div>
 <div align="left" style="padding-left: 5cm" id="SPFDiv"></div>
 <div align="left" style="padding-left: 5cm" id="PSDiv"></div>
 <div align="left" style="padding-left: 5cm" id="MFQDiv"></div>
